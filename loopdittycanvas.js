@@ -67,20 +67,17 @@ class LoopDittyCanvas extends BaseCanvas {
         this.vertexVBO = -1;
         this.colorVBO = -1;
         let canvas = this;
-        let gl = this.gl;
-        this.shader = new Promise((resolve, reject) => {
-            getShaderProgramAsync(gl, "shaders/lineSegments").then((shader) => {
-                shader.description = 'A shader for drawing lines with a constant color';
-                shader.vPosAttrib = gl.getAttribLocation(shader, "vPos");
-                gl.enableVertexAttribArray(shader.vPosAttrib);
-                shader.vColorAttrib = gl.getAttribLocation(shader, "vColor");
-                gl.enableVertexAttribArray(shader.vColorAttrib);
-                shader.pMatrixUniform = gl.getUniformLocation(shader, "uPMatrix");
-                shader.mvMatrixUniform = gl.getUniformLocation(shader, "uMVMatrix");
-                shader.pointSizeUniform = gl.getUniformLocation(shader, "uPointSize");
-                resolve(shader);
-            });
-        }).then(shader => {
+        this.shader = getShaderProgramAsync(canvas.gl, "shaders/lineSegments");
+        this.shader.then(function(shader) {
+            let gl = canvas.gl;
+            shader.description = 'A shader for drawing lines with a constant color';
+            shader.vPosAttrib = gl.getAttribLocation(shader, "vPos");
+            gl.enableVertexAttribArray(shader.vPosAttrib);
+            shader.vColorAttrib = gl.getAttribLocation(shader, "vColor");
+            gl.enableVertexAttribArray(shader.vColorAttrib);
+            shader.pMatrixUniform = gl.getUniformLocation(shader, "uPMatrix");
+            shader.mvMatrixUniform = gl.getUniformLocation(shader, "uMVMatrix");
+            shader.pointSizeUniform = gl.getUniformLocation(shader, "uPointSize");
             shader.shaderReady = true;
             canvas.shader = shader;
         });
