@@ -129,7 +129,6 @@ def extract_features_json(filename, jsonfilename, song_name = "test song", sr=44
 
     c = plt.get_cmap('Spectral')
     C = c(np.array(np.round(np.linspace(0, 255,chroma.shape[0])), dtype=np.int32))
-    C = C.flatten()
     Results['colors'] = C.tolist()
     Results['songName'] = song_name
 
