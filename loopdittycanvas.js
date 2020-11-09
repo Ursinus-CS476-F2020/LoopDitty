@@ -193,9 +193,9 @@ class LoopDittyCanvas extends BaseCanvas {
     }
 
     /**
-     * Redraw the canvas
+     * Redraw the curve
      */
-    repaint() {
+    drawScene() {
         this.gl.viewport(0, 0, this.gl.viewportWidth, this.gl.viewportHeight);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
@@ -230,6 +230,13 @@ class LoopDittyCanvas extends BaseCanvas {
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorVBO);
             this.gl.vertexAttribPointer(this.shader.vColorAttrib, this.colorVBO.itemSize, this.gl.FLOAT, false, 0, 0);
             this.gl.drawArrays(this.gl.POINTS, playIdx, 1);
+        }
+    }
+
+    repaint() {
+        this.drawScene(false);
+        if (!this.audioObj.audioWidget.paused && !this.dragging) {
+            requestAnimationFrame(this.repaint.bind(this));
         }
     }
 }

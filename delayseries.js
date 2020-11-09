@@ -21,9 +21,7 @@ onmessage = function(event) {
 
     // Step 1: Normalize and concatenate features
     let X = [];
-    X = features['mfcc'];
-    postMessage({type:"debug", debug:"X[0].length = " + X[0].length});
-    /*for (let param in using) {
+    for (let param in using) {
         if (param in features) {
             postMessage({type:"newTask", taskString:"Normalizing " + param});
             let Xi = normFn(features[param]);
@@ -40,7 +38,7 @@ onmessage = function(event) {
         else {
             postMessage({type:"warning", warning:"Asking for parameter " + param + ", but does not exist in audio features"});
         }
-    }*/
+    }
 
     // Step 2: Perform a stacked embedding
     let winLength = event.data.winLength;

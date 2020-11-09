@@ -29,8 +29,8 @@ function getMeanCentered(X) {
         }
     }
     // Compute mean
-    let mean = [];
     for (let j = 0; j < X[0].length; j++) {
+        let mean = 0;
         for (let i = 0; i < N; i++) {
             mean += X[i][j];
         }
@@ -57,11 +57,13 @@ function getSTDevNorm(X) {
         for (let i = 0; i < N; i++) {
             stdev += ret[i][j]*ret[i][j];
         }
-        stdev = Math.sqrt(stdev/(N-1));
-        let norm = stdev*Math.sqrt(N);
-        // Divide by standard deviation and square root of N
-        for (let i = 0; i < N; i++) {
-            ret[i][j] /= norm;
+        if (stdev > 0) {
+            stdev = Math.sqrt(stdev/(N-1));
+            let norm = stdev*Math.sqrt(N);
+            // Divide by standard deviation and square root of N
+            for (let i = 0; i < N; i++) {
+                ret[i][j] /= norm;
+            }
         }
     }
     return ret;
@@ -80,10 +82,12 @@ function getZNorm(X) {
         for (let j = 0; j < X[i].length; j++) {
             norm += ret[i][j]*ret[i][j];
         }
-        norm = Math.sqrt(norm);
-        // Divide each dimension by norm
-        for (let j = 0; j < X[i].length; j++) {
-            ret[i][j] /= norm;
+        if (norm > 0) {
+            norm = Math.sqrt(norm);
+            // Divide each dimension by norm
+            for (let j = 0; j < X[i].length; j++) {
+                ret[i][j] /= norm;
+            }
         }
     }
     return ret;

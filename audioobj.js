@@ -21,6 +21,7 @@ class AudioObj {
         this.times = params.times;
         this.colors = params.colors;
         this.features = params.features;
+        console.log(getZNorm(this.features['mfcc']));
     }
     
     /**
