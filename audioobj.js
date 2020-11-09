@@ -19,7 +19,6 @@ class AudioObj {
     updateParams(params) {
         this.audioWidget.src = params.audio;
         this.times = params.times;
-        this.songnameTxt.innerHTML = params.songname;
         this.colors = params.colors;
         this.features = params.features;
     }
@@ -31,30 +30,38 @@ class AudioObj {
      *                       and whose values are true/false
      * @param {function} normFn A function to normalize the point cloud
      *                          for each feature
-     * @return An unrolled Float32Array of 3D coordinates
+     * @param {int} winLength The length of the sliding window.
+     *                        If undefined, it should be 1.
+     * @return An promise that resolves to an unrolled Float32Array 
+     *         of 3D coordinates
      */
-    get3DProjection(using, normFn) {
-        // TODO: Add sliding window
-        let X = [];
+    get3DProjection(using, normFn, winLength) {
+        if (winLength === undefined) {
+            winLength = 1;
+        }
+        let audioObj = this;
         this.progressBar.loadColor = "yellow";
         this.progressBar.loading = true;
         this.progressBar.changeLoad();
-        let worker = new Worker("delayseries.js");
-        worker.postMessage({normFn:normFn, using:using, features:this.features});
-        worker.onmessage = function(event) {
-            if (event.data.type == "newTask") {
-                this.progressBar.loadString = event.data.taskString;
+        return new Promise((resolve, reject) => {
+            let worker = new Worker("delayseries.js");
+            worker.postMessage({normFn:normFn, using:using, features:audioObj.features, winLength:winLength});
+            worker.onmessage = function(event) {
+                if (event.data.type == "newTask") {
+                    audioObj.progressBar.loadString = event.data.taskString;
+                }
+                else if (event.data.type == "warning") {
+                    console.log("Warning: " + event.data.warning);
+                }
+                else if (event.data.type == "debug") {
+                    console.log("Debug: " + event.data.debug);
+                }
+                else if (event.data.type == "end") {
+                    audioObj.progressBar.changeToReady();
+                    resolve(flatten32(event.data.X));
+                }
             }
-            else if (event.data.type == "end") {
-                initGLBuffers(event.data.Y);
-                var timeSlider = document.getElementById('timeSlider');
-                timeSlider.value = 0;
-                recomputeButton.style.backgroundColor = "#bfbfbf";
-                MusicParams.needsUpdate = false;
-                updateTwitterLink();
-                changeToReady();
-            }
-        }
+        });
     }
 
     /**

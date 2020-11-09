@@ -29,14 +29,16 @@ function getMeanCentered(X) {
         }
     }
     // Compute mean
-    let mean = 0.0;
-    for (let i = 0; i < N; i++) {
-        mean += X[i][j];
-    }
-    mean /= N;
-    // Subtract off mean
-    for (let i = 0; i < N; i++) {
-        ret[i][j] = X[i][j] - mean;
+    let mean = [];
+    for (let j = 0; j < X[0].length; j++) {
+        for (let i = 0; i < N; i++) {
+            mean += X[i][j];
+        }
+        mean /= N;
+        // Subtract off mean
+        for (let i = 0; i < N; i++) {
+            ret[i][j] = X[i][j] - mean;
+        }
     }
     return ret;
 }

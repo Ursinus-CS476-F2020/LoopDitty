@@ -9,6 +9,10 @@ import json
 import base64
 import time
 import librosa
+from sklearn.decomposition import PCA
+
+# Dimensions to which to reduce the tempogram
+TEMPOGRAM_DIMRED = 20
 
 def get_base64_file(filename):
     """
@@ -101,11 +105,23 @@ def extract_features_json(filename, jsonfilename, song_name = "test song", sr=44
     oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length,
                                         max_size=SUPERFLUX_SIZE)
     tempogram = librosa.feature.tempogram(onset_envelope=oenv, sr=sr, hop_length=hop_length)
-    
+    # 4) Spectral features
+    x1 = librosa.feature.spectral_centroid(y=y, sr=sr, hop_length=hop_length)
+    x2 = librosa.feature.spectral_bandwidth(y=y, sr=sr, hop_length=hop_length)
+    x3 = librosa.feature.spectral_rolloff(y=y, sr=sr, hop_length=hop_length)
+    x4 = librosa.feature.spectral_flatness(y=y, hop_length=hop_length)
+    x5 = librosa.feature.zero_crossing_rate(y, hop_length=hop_length)
+    spectral = np.concatenate((x1, x2, x3, x4, x5), axis=0)
+
     chroma = chroma.T
     mfcc = mfcc.T
     tempogram = tempogram.T
-    features = {'chroma':chroma.tolist(), 'mfcc':mfcc.tolist(), 'tempogram':tempogram.tolist()}
+    pca = PCA(n_components=TEMPOGRAM_DIMRED)
+    tempogram = pca.fit_transform(tempogram)
+    print("Tempogram variance explained: %.3g"%np.sum(pca.explained_variance_ratio_))
+    spectral = spectral.T
+
+    features = {'chroma':chroma.tolist(), 'mfcc':mfcc.tolist(), 'tempogram':tempogram.tolist(), 'spectral':spectral.tolist()}
     Results['features'] = features
     times = np.arange(mfcc.shape[0])*hop_length/sr
     Results['times'] = times.tolist()

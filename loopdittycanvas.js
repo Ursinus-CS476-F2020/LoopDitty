@@ -29,7 +29,11 @@ class LoopDittyCanvas extends BaseCanvas {
         this.displayOptsFolder = gui.addFolder("Display Options");
 
         this.audioFolder = gui.addFolder("Audio Options");
+        this.songName = "Untitled";
+        this.audioFolder.add(this, "songName");
         this.audioFolder.add(this, "updateGeometry");
+        this.winLength = 1;
+        this.audioFolder.add(this, "winLength", 1, 100, 1);
         this.normFn = "getSTDevNorm";
         this.audioFolder.add(this, "normFn", ["getSTDevNorm", "getZNorm"]).listen().onChange(
             function() {
@@ -108,7 +112,7 @@ class LoopDittyCanvas extends BaseCanvas {
      */
     updateBBox(X) {
         let bbox = [X[0], X[0], X[1], X[1], X[2], X[2]];
-        for (i = 0; i < this.N; i++) {
+        for (let i = 0; i < X.length/3; i++) {
             if (X[i*3] < bbox[0]) {
                 bbox[0] = X[i*3];
             }
@@ -128,7 +132,7 @@ class LoopDittyCanvas extends BaseCanvas {
                 bbox[5] = X[i*3+2];
             }
         }
-        this.camera.centerOnBBox(new AABBox3D.apply(bbox, null));
+        this.camera.centerOnBBox(new AABox3D(bbox[0], bbox[1], bbox[2], bbox[3], bbox[4], bbox[5]));
     }
 
     updateGeometry() {
@@ -138,33 +142,34 @@ class LoopDittyCanvas extends BaseCanvas {
             this.shader.then(canvas.updateGeometry.bind(canvas));
         }
         else {
-            let X = this.audioObj.get3DFeatures(this.selectedFeatures, this.normFn);
-            let N = X.length/3;
-            if (N <= 0) {
-                return;
-            }
-            this.updateBBox(X);
-            //Initialize vertex buffers
-            if (this.vertexVBO == -1) {
-                this.vertexVBO = this.gl.createBuffer();
-            }
-            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexVBO);
-            this.gl.bufferData(this.gl.ARRAY_BUFFER, X, this.gl.STATIC_DRAW);
-            this.vertexVBO.itemSize = 3;
-            this.vertexVBO.numItems = N;
-        
-            //Initialize color buffers
-            if (this.colorVBO == -1) {
-                this.colorVBO = this.gl.createBuffer();
-            }
-            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorVBO);
-            this.gl.bufferData(this.gl.ARRAY_BUFFER, this.audioObj.getColorsArray(), this.gl.STATIC_DRAW);
-            this.colorVBO.itemSize = 3; 
-            this.colorVBO.numItems = N;
-            requestAnimationFrame(this.repaint.bind(this));
-    
-            this.refreshDisplays();
-            this.progressBar.changeToReady();
+            let XPromise = this.audioObj.get3DProjection(this.selectedFeatures, this.normFn, this.winLength);
+            XPromise.then(function(X) {
+                let N = X.length/3;
+                if (N <= 0) {
+                    return;
+                }
+                console.log(X);
+                canvas.updateBBox(X);
+                //Initialize vertex buffers
+                if (canvas.vertexVBO == -1) {
+                    canvas.vertexVBO = canvas.gl.createBuffer();
+                }
+                canvas.gl.bindBuffer(canvas.gl.ARRAY_BUFFER, canvas.vertexVBO);
+                canvas.gl.bufferData(canvas.gl.ARRAY_BUFFER, X, canvas.gl.STATIC_DRAW);
+                canvas.vertexVBO.itemSize = 3;
+                canvas.vertexVBO.numItems = N;
+            
+                //Initialize color buffers
+                if (canvas.colorVBO == -1) {
+                    canvas.colorVBO = canvas.gl.createBuffer();
+                }
+                canvas.gl.bindBuffer(canvas.gl.ARRAY_BUFFER, canvas.colorVBO);
+                canvas.gl.bufferData(canvas.gl.ARRAY_BUFFER, canvas.audioObj.getColorsArray(), canvas.gl.STATIC_DRAW);
+                canvas.colorVBO.itemSize = 3; 
+                canvas.colorVBO.numItems = N;
+                canvas.progressBar.changeToReady();
+                requestAnimationFrame(canvas.repaint.bind(canvas));
+            });
         }
     }
 
@@ -175,8 +180,8 @@ class LoopDittyCanvas extends BaseCanvas {
         }
         let canvas = this;
         // Add features to the menu bar as toggles
-        this.audioFolder.remove(this.featureToggleFolder);
-        this.featureToggleFolder = this.audioFolder.add("Features");
+        this.audioFolder.removeFolder(this.featureToggleFolder);
+        this.featureToggleFolder = this.audioFolder.addFolder("Features");
         this.selectedFeatures = {};
         for (let feature in params.features) {
             this.selectedFeatures[feature] = true;
@@ -184,6 +189,7 @@ class LoopDittyCanvas extends BaseCanvas {
                 canvas.updateGeometry();
             });
         }
+        this.songName = params.songName;
         //Setup audio buffers
         this.audioObj.updateParams(params);
         this.updateGeometry();
