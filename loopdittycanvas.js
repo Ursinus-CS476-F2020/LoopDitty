@@ -66,6 +66,7 @@ class LoopDittyCanvas extends BaseCanvas {
     setupShaders() {
         this.vertexVBO = -1;
         this.colorVBO = -1;
+        let canvas = this;
         let gl = this.gl;
         this.shader = new Promise((resolve, reject) => {
             getShaderProgramAsync(gl, "shaders/lineSegments").then((shader) => {
@@ -81,7 +82,7 @@ class LoopDittyCanvas extends BaseCanvas {
             });
         }).then(shader => {
             shader.shaderReady = true;
-            this.shader = shader;
+            canvas.shader = shader;
         });
     }
 
@@ -148,7 +149,6 @@ class LoopDittyCanvas extends BaseCanvas {
                 if (N <= 0) {
                     return;
                 }
-                console.log(X);
                 canvas.updateBBox(X);
                 //Initialize vertex buffers
                 if (canvas.vertexVBO == -1) {
@@ -231,7 +231,7 @@ class LoopDittyCanvas extends BaseCanvas {
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexVBO);
             this.gl.vertexAttribPointer(this.shader.vPosAttrib, this.vertexVBO.itemSize, this.gl.FLOAT, false, 0, 0);
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorVBO);
-            this.gl.vertexAttribPointer(this.shade2.vColorAttrib, this.colorVBO.itemSize, this.gl.FLOAT, false, 0, 0);
+            this.gl.vertexAttribPointer(this.shader.vColorAttrib, this.colorVBO.itemSize, this.gl.FLOAT, false, 0, 0);
             this.gl.drawArrays(this.gl.POINTS, playIdx, 1);
         }
     }
