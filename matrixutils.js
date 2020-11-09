@@ -93,6 +93,19 @@ function getZNorm(X) {
     return ret;
 }
 
+/**
+ * Scale the entries of the matrix uniformly
+ * @param {2d array} X The matrix 
+ * @param {float} scale Scale to apply to each entry
+ */
+function scaleMatrix(X, scale) {
+    for (let i = 0; i < X.length; i++) {
+        for (let j = 0; j < X[i].length; j++) {
+            X[i][j] *= scale;
+        }
+    }
+}
+
 
 /**
  * Simple implementation of the power method to find

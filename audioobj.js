@@ -11,6 +11,7 @@ class AudioObj {
     constructor(audioWidgetDOM, progressBar) {
         this.audioWidget = audioWidgetDOM;
         this.progressBar = progressBar;
+        this.justLoaded = false;
         this.times = [0];
         this.colors = [];
         this.features = {};
@@ -21,22 +22,23 @@ class AudioObj {
         this.times = params.times;
         this.colors = params.colors;
         this.features = params.features;
-        console.log(getZNorm(this.features['mfcc']));
     }
     
     /**
      * Compute a 3D projection of the selected audio features using a specified
      * normalization followed by PCA
-     * @param {object} using An object whose fields are feature names
-     *                       and whose values are true/false
-     * @param {function} normFn A function to normalize the point cloud
-     *                          for each feature
+     * @param {object} featureWeights An object whose fields are feature names
+     *                                and whose values are weights between 0 
+     *                                and 1 for those features
+     * @param {function} featureNorm A function to normalize the point cloud
+     *                              for each feature
+     * @param {function} jointNorm A function to normalize the joint embedding
      * @param {int} winLength The length of the sliding window.
      *                        If undefined, it should be 1.
      * @return An promise that resolves to an unrolled Float32Array 
      *         of 3D coordinates
      */
-    get3DProjection(using, normFn, winLength) {
+    get3DProjection(featureWeights, featureNorm, jointNorm, winLength) {
         if (winLength === undefined) {
             winLength = 1;
         }
@@ -44,9 +46,9 @@ class AudioObj {
         this.progressBar.loadColor = "yellow";
         this.progressBar.loading = true;
         this.progressBar.changeLoad();
-        return new Promise((resolve, reject) => {
-            let worker = new Worker("delayseries.js");
-            worker.postMessage({normFn:normFn, using:using, features:audioObj.features, winLength:winLength});
+        return new Promise((resolve) => {
+            let worker = new Worker("projworker.js");
+            worker.postMessage({featureNorm:featureNorm, jointNorm:jointNorm, featureWeights:featureWeights, features:audioObj.features, winLength:winLength});
             worker.onmessage = function(event) {
                 if (event.data.type == "newTask") {
                     audioObj.progressBar.loadString = event.data.taskString;
@@ -59,6 +61,8 @@ class AudioObj {
                 }
                 else if (event.data.type == "end") {
                     audioObj.progressBar.changeToReady();
+                    audioObj.justLoaded = true;
+                    audioObj.audioWidget.pause();
                     resolve(flatten32(event.data.X));
                 }
             }
@@ -74,9 +78,17 @@ class AudioObj {
 
     /**
      * Return the index of the row with the closest time to
-     * the currently playing time in the audio widget
+     * the currently playing time in the audio widget, or
+     * return the last index if the audio was just loaded so
+     * that the whole curve is displayed
      */
     getClosestIdx() {
+        if (!this.audioWidget.paused) {
+            this.justLoaded = false;
+        }
+        if (this.justLoaded) {
+            return this.times.length;
+        }
         //TODO: Make a binary search
         let time = this.audioWidget.currentTime;
         let t = 0;

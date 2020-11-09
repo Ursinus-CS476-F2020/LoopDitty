@@ -16,6 +16,13 @@ class LoopDittyCanvas extends BaseCanvas {
         this.camera = new MousePolarCamera(glcanvas.width, glcanvas.height);
         this.setupMenubar(fileInput);
         this.setupShaders();
+        this.audioObj.audioWidget.addEventListener("play", this.audioEventHandler.bind(this));
+        this.audioObj.audioWidget.addEventListener("pause", this.audioEventHandler.bind(this));
+        this.audioObj.audioWidget.addEventListener("seek", this.audioEventHandler.bind(this));
+    }
+
+    audioEventHandler(event) {
+        requestAnimationFrame(this.repaint.bind(this));
     }
 
     /**
@@ -34,13 +41,13 @@ class LoopDittyCanvas extends BaseCanvas {
         this.audioFolder.add(this, "updateGeometry");
         this.winLength = 1;
         this.audioFolder.add(this, "winLength", 1, 100, 1);
-        this.normFn = "getSTDevNorm";
-        this.audioFolder.add(this, "normFn", ["getSTDevNorm", "getZNorm"]).listen().onChange(
-            function() {
-                canvas.updateGeometry();
-            }
-        );
-        this.featureToggleFolder = this.audioFolder.addFolder("Audio Features");
+        this.featureNorm = "getSTDevNorm";
+        this.jointNorm = "None";
+        let normTypes = ["getSTDevNorm", "getZNorm", "None"];
+        let updateFn = canvas.updateGeometry.bind(canvas);
+        this.audioFolder.add(this, "featureNorm", normTypes).listen().onChange(updateFn);
+        this.audioFolder.add(this, "jointNorm", normTypes).listen().onChange(updateFn);
+        this.featureWeightsFolder = this.audioFolder.addFolder("Audio Features");
         this.selectedFeatures = {};
 
         
@@ -83,24 +90,20 @@ class LoopDittyCanvas extends BaseCanvas {
         });
     }
 
-    loadPrecomputedSong(file) {
-        // TODO: Finish this
-        /*progressBar.loadString = "Reading data from server";
-        progressBar.loadColor = "red";
-        progressBar.loading = true;
+    /**
+     * Load a JSON file at a specified path
+     * @param {string} path Path to JSON file with audio and features
+     */
+    loadPrecomputedSong(path) {
+        this.progressBar.loadString = "Reading data from server";
+        this.progressBar.loadColor = "red";
+        this.progressBar.loading = true;
+        this.progressBar.ndots = 0;
         progressBar.changeLoad();
-    
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', file, true);
-        xhr.responseType = 'json';
-        xhr.onload = function(err) {
-            setupSong(this.response);
-        };
-        progressBar.loading = true;
-        progressBar.ndots = 0;
-        progressBar.changeLoad();
-        xhr.send();*/
-    
+        let canvas = this;
+        $.get(path, function(params) {
+            canvas.setupSong(params);
+        });
     }
 
     /**
@@ -133,6 +136,10 @@ class LoopDittyCanvas extends BaseCanvas {
         this.camera.centerOnBBox(new AABox3D(bbox[0], bbox[1], bbox[2], bbox[3], bbox[4], bbox[5]));
     }
 
+    /**
+     * Obtain a 3D projection given the current audio parameters, and
+     * update the vertex buffer with the new coordinates
+     */
     updateGeometry() {
         let canvas = this;
         if (!('shaderReady' in this.shader)) {
@@ -140,7 +147,7 @@ class LoopDittyCanvas extends BaseCanvas {
             this.shader.then(canvas.updateGeometry.bind(canvas));
         }
         else {
-            let XPromise = this.audioObj.get3DProjection(this.selectedFeatures, this.normFn, this.winLength);
+            let XPromise = this.audioObj.get3DProjection(this.selectedFeatures, this.featureNorm, this.jointNorm, this.winLength);
             XPromise.then(function(X) {
                 let N = X.length/3;
                 if (N <= 0) {
@@ -170,6 +177,11 @@ class LoopDittyCanvas extends BaseCanvas {
         }
     }
 
+    /**
+     * Load in a new song
+     * @param {object} params Parameters of the song, including song name,
+     *                        timing, and features
+     */
     setupSong(params) {
         if (!this.gl) {
             alert("Error: GL not properly initialized, so cannot display new song");
@@ -177,14 +189,12 @@ class LoopDittyCanvas extends BaseCanvas {
         }
         let canvas = this;
         // Add features to the menu bar as toggles
-        this.audioFolder.removeFolder(this.featureToggleFolder);
-        this.featureToggleFolder = this.audioFolder.addFolder("Features");
+        this.audioFolder.removeFolder(this.featureWeightsFolder);
+        this.featureWeightsFolder = this.audioFolder.addFolder("Features");
         this.selectedFeatures = {};
         for (let feature in params.features) {
-            this.selectedFeatures[feature] = true;
-            this.featureToggleFolder.add(this.selectedFeatures, feature).listen(function() {
-                canvas.updateGeometry();
-            });
+            this.selectedFeatures[feature] = 1.0;
+            this.featureWeightsFolder.add(this.selectedFeatures, feature, 0, 1);
         }
         this.songName = params.songName;
         //Setup audio buffers
@@ -223,20 +233,21 @@ class LoopDittyCanvas extends BaseCanvas {
     
             //Step 2: Draw the current point as a larger point
             this.gl.uniform1f(this.shader.pointSizeUniform, 15.0);
-            // TODO: See if I can get away without binding a new program
-            this.gl.useProgram(this.shader);
-            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexVBO);
-            this.gl.vertexAttribPointer(this.shader.vPosAttrib, this.vertexVBO.itemSize, this.gl.FLOAT, false, 0, 0);
-            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorVBO);
-            this.gl.vertexAttribPointer(this.shader.vColorAttrib, this.colorVBO.itemSize, this.gl.FLOAT, false, 0, 0);
             this.gl.drawArrays(this.gl.POINTS, playIdx, 1);
         }
     }
 
     repaint() {
-        this.drawScene(false);
-        if (!this.audioObj.audioWidget.paused && !this.dragging) {
+        this.drawScene();
+        if (!this.audioObj.audioWidget.paused) {
+            // It's getting repainted continuously, so don't
+            // react to mouse events, or else the repaint calls
+            // will blow up and slow things down
+            this.repaintOnInteract = false;
             requestAnimationFrame(this.repaint.bind(this));
+        }
+        else {
+            this.repaintOnInteract = true;
         }
     }
 }
