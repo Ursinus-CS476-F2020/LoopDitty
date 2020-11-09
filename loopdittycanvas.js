@@ -9,8 +9,8 @@ class LoopDittyCanvas extends BaseCanvas {
      * @param {string} shadersrelpath Path to the folder that contains the shaders,
      *                                relative to where the constructor is being called
      */
-    constructor(audioObj, progressBar, fileInput, glcanvas, shadersrelpath) {
-        super(glcanvas, shadersrelpath);
+    constructor(audioObj, progressBar, fileInput, glcanvas) {
+        super(glcanvas);
         this.audioObj = audioObj;
         this.progressBar = progressBar;
         this.camera = new MousePolarCamera(glcanvas.width, glcanvas.height);
