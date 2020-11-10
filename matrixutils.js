@@ -106,6 +106,78 @@ function scaleMatrix(X, scale) {
     }
 }
 
+/**
+ * 
+ * @param {2d array} X An Nxd point cloud
+ * @param {int} winLength Number of lags to take
+ * @return {2d array} XLag an (N-winLength+1) x d*winLength point cloud
+ */
+function getDelayEmbedding(X, winLength) {
+    let XLag = [];
+    let Win = X.length - winLength + 1;
+    for (let i = 0; i < Win; i++) {
+        XLag.push(X[i]);
+        for (let di = 1; di < winLength; di++) {
+            XLag[i] = XLag[i].concat(X[i+di]);
+        }
+    }
+    return XLag;
+}
+
+/**
+ * Take a running mean of each feature dimension in a sliding window
+ * @param {2d array} X An Nxd point cloud
+ * @param {int} winLength Length of sliding window
+ */
+function getWindowMean(X, winLength) {
+    M = X.length - winLength + 1;
+    // Compute first window
+    let XSum = [];
+    let XMean = [[]];
+    for (let j = 0; j < X[0].length; j++) {
+        let sum = 0.0;
+        for (let i = 0; i < winLength; i++) {
+            sum += X[i][j];
+        }
+        XSum.push(sum);
+        XMean[0].push(sum/winLength);
+    }
+    for (let i = 1; i < M; i++) {
+        XMean[i] = [];
+        for (let j = 0; j < X[i].length; j++) {
+            XSum[j] = XSum[j] - X[i-1][j] + X[i+winLength-1][j];
+            XMean[i].push(XSum[j]/winLength);
+        }
+    }
+    return XMean;
+}
+
+/**
+ * 
+ * @param {2d array} X An Nxd point cloud
+ * @param {int} winLength Length of sliding window
+ * @param {2d array} XMean Mean array with this window length.  If undefined,
+ *                  compute it on the fly
+ */
+function getWindowSTDev(X, winLength, XMean) {
+    M = X.length - winLength + 1;
+    if (XMean === undefined) {
+        XMean = getWindowMean(X, winLength);
+    }
+    // Compute first window
+    let XSTDev = [];
+    for (let i = 0; i < M; i++) {
+        XSTDev[i] = [];
+        for (let j = 0; j < X[i].length; j++) {
+            let sum = 0.0;
+            for (let di = 0; di < winLength; di++) {
+                sum += Math.pow(X[i+di][j] - XMean[i][j], 2);
+            }
+            XSTDev[i][j] = Math.sqrt(sum/(winLength-1));
+        }
+    }
+    return XSTDev;
+}
 
 /**
  * Simple implementation of the power method to find

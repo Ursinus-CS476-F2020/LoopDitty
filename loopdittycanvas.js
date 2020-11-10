@@ -39,14 +39,30 @@ class LoopDittyCanvas extends BaseCanvas {
         this.songName = "Untitled";
         this.audioFolder.add(this, "songName");
         this.audioFolder.add(this, "updateGeometry");
-        this.winLength = 1;
-        this.audioFolder.add(this, "winLength", 1, 100, 1);
+        this.delayOpts = {winLength: 1, mean:true, stdev:true, delayEmbedding:false};
+        this.embeddingFolder = this.audioFolder.addFolder("Embedding");
+        this.embeddingFolder.add(this.delayOpts, "winLength", 1, 100, 1);
         this.featureNorm = "getSTDevNorm";
         this.jointNorm = "None";
         let normTypes = ["getSTDevNorm", "getZNorm", "None"];
-        let updateFn = canvas.updateGeometry.bind(canvas);
-        this.audioFolder.add(this, "featureNorm", normTypes).listen().onChange(updateFn);
-        this.audioFolder.add(this, "jointNorm", normTypes).listen().onChange(updateFn);
+        this.embeddingFolder.add(this, "featureNorm", normTypes);
+        this.embeddingFolder.add(this, "jointNorm", normTypes);
+        // Ensure that delayEmbedding can be selected only when
+        // mean and standard deviation are not
+        let toggleDelay = function() {
+            if (canvas.delayOpts.mean || canvas.delayOpts.stdev) {
+                canvas.delayOpts.delayEmbedding = false;
+            }
+        }
+        this.embeddingFolder.add(this.delayOpts, "mean").listen().onChange(toggleDelay);
+        this.embeddingFolder.add(this.delayOpts, "stdev").listen().onChange(toggleDelay);
+        this.embeddingFolder.add(this.delayOpts, "delayEmbedding").listen().onChange(function() {
+            if (canvas.delayOpts.delayEmbedding) {
+                canvas.delayOpts.mean = false;
+                canvas.delayOpts.stdev = false;
+            }
+        });
+
         this.featureWeightsFolder = this.audioFolder.addFolder("Audio Features");
         this.selectedFeatures = {};
 
@@ -147,7 +163,7 @@ class LoopDittyCanvas extends BaseCanvas {
             this.shader.then(canvas.updateGeometry.bind(canvas));
         }
         else {
-            let XPromise = this.audioObj.get3DProjection(this.selectedFeatures, this.featureNorm, this.jointNorm, this.winLength);
+            let XPromise = this.audioObj.get3DProjection(this.selectedFeatures, this.featureNorm, this.jointNorm, this.delayOpts);
             XPromise.then(function(X) {
                 let N = X.length/3;
                 if (N <= 0) {

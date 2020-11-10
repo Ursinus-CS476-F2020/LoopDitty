@@ -33,22 +33,21 @@ class AudioObj {
      * @param {function} featureNorm A function to normalize the point cloud
      *                              for each feature
      * @param {function} jointNorm A function to normalize the joint embedding
-     * @param {int} winLength The length of the sliding window.
-     *                        If undefined, it should be 1.
+     * @param {int} delayOpts All of the options for performing a sliding window,
+     *                      including the window length and booleans for 
+     *                      delay embedding and mean/stdev (the latter which are
+     *                      mutually exclusive)
      * @return An promise that resolves to an unrolled Float32Array 
      *         of 3D coordinates
      */
-    get3DProjection(featureWeights, featureNorm, jointNorm, winLength) {
-        if (winLength === undefined) {
-            winLength = 1;
-        }
+    get3DProjection(featureWeights, featureNorm, jointNorm, delayOpts) {
         let audioObj = this;
         this.progressBar.loadColor = "yellow";
         this.progressBar.loading = true;
         this.progressBar.changeLoad();
         return new Promise((resolve) => {
             let worker = new Worker("projworker.js");
-            worker.postMessage({featureNorm:featureNorm, jointNorm:jointNorm, featureWeights:featureWeights, features:audioObj.features, winLength:winLength});
+            worker.postMessage({featureNorm:featureNorm, jointNorm:jointNorm, featureWeights:featureWeights, features:audioObj.features, delayOpts:delayOpts});
             worker.onmessage = function(event) {
                 if (event.data.type == "newTask") {
                     audioObj.progressBar.loadString = event.data.taskString;

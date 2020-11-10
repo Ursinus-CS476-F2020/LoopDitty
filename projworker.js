@@ -54,18 +54,37 @@ onmessage = function(event) {
     }
 
     // Step 2: Perform a stacked embedding
-    let winLength = event.data.winLength;
-    postMessage({type:"newTask", taskString:"Computing Delay Embedding"});
+    let delayOpts = event.data.delayOpts;
+    let winLength = delayOpts.winLength;
     if (winLength > 1) {
-        let XLag = [];
-        let Win = X.length - winLength + 1;
-        for (let i = 0; i < Win; i++) {
-            XLag.push(X[i]);
-            for (let di = 1; di < winLength; di++) {
-                XLag[i] = XLag[i].concat(X[i+di]);
+        if (delayOpts.delayEmbedding) {
+            postMessage({type:"newTask", taskString:"Computing Delay Embedding"});
+            X = getDelayEmbedding(X, winLength);
+        }
+        else {
+            let XMean = undefined;
+            let XSTDev = undefined;
+            if (delayOpts.mean) {
+                postMessage({type:"newTask", taskString:"Computing Window Means"});
+                XMean = getWindowMean(X, winLength);
+                if (!delayOpts.stdev) {
+                    X = XMean;
+                }
+            }
+            if (delayOpts.stdev) {
+                postMessage({type:"newTask", taskString:"Computing Window Standard Deviations"});
+                XSTDev = getWindowSTDev(X, winLength, XMean);
+                if (!delayOpts.mean) {
+                    X = XSTDev;
+                }
+            }
+            if (delayOpts.mean && delayOpts.stdev) {
+                X = XMean;
+                for (let i = 0; i < X.length; i++) {
+                    X[i] = X[i].concat(XSTDev[i]);
+                }
             }
         }
-        X = XLag;
     }
 
     // Step 3: Normalizing joint embedding
