@@ -164,7 +164,6 @@ function getWindowSTDev(X, winLength, XMean) {
     if (XMean === undefined) {
         XMean = getWindowMean(X, winLength);
     }
-    // Compute first window
     let XSTDev = [];
     for (let i = 0; i < M; i++) {
         XSTDev[i] = [];

@@ -10,6 +10,8 @@ import base64
 import time
 import librosa
 from sklearn.decomposition import PCA
+from SimilarityFusion import *
+
 
 # Dimensions to which to reduce the tempogram
 TEMPOGRAM_DIMRED = 20
@@ -59,7 +61,6 @@ def pretty_floats(obj):
         return map(pretty_floats, obj)
     return obj
 
-
 def extract_features_json(filename, jsonfilename, song_name = "test song", sr=44100, hop_length = 512, mfcc_win = 22050):
     """
     Compute features and save them as a JSON file
@@ -88,7 +89,7 @@ def extract_features_json(filename, jsonfilename, song_name = "test song", sr=44
     y, sr = librosa.load(filename, sr=sr)
 
 
-    ## Step 3: Compute features and stack them up
+    ## Step 3: Compute features
     # 1) CQT chroma
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=hop_length)
     # 2) Exponentially liftered MFCCs
@@ -112,6 +113,8 @@ def extract_features_json(filename, jsonfilename, song_name = "test song", sr=44
     x4 = librosa.feature.spectral_flatness(y=y, hop_length=hop_length)
     x5 = librosa.feature.zero_crossing_rate(y, hop_length=hop_length)
     spectral = np.concatenate((x1, x2, x3, x4, x5), axis=0)
+    # 5) Structure features
+    get_structure_features(chroma, mfcc, tempogram, hop_length, y, sr)
 
     chroma = chroma.T
     mfcc = mfcc.T
