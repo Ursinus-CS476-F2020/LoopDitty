@@ -7,6 +7,7 @@ Purpose: To implement similarity network fusion approach described in
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 from scipy import sparse
 import scipy.io as sio
 import time
@@ -224,8 +225,33 @@ def get_graph_obj(W, K=10, res = 400):
     return ret
 
 
-def get_structure_features(chroma, mfcc, tempogram, hop_length, y, sr):
-    from sklearn.manifold import MDS
+def get_structure_features(chroma, mfcc, tempogram, hop_length, y, sr, final_times, ndim=12):
+    """
+    Compute a structural embedding based on a meet matrix obtained
+    from hierarchical clustering of a fused feature similarity matrix
+    Parameters
+    ----------
+    chroma: ndarray(d1, N)
+        Chroma features
+    mfcc: ndarray(d2, N)
+        MFCC features
+    tempogram: ndarray(d2, N)
+        Tempogram features
+    hop_length: int
+        Hop length between frames in samples
+    y: ndarray(NSamples)
+        Audio samples
+    sr: int
+        Sample rate
+    final_times: ndarray(N)
+        Times (in seconds) of each feature frame
+    ndim: int
+        Number of dimensions to take in structural embedding
+    Returns
+    -------
+    Y: ndarray(N, ndim)
+        Structure embedding
+    """
     import mir_eval
     lapfn = getRandomWalkLaplacianEigsDense
     specfn = lambda v, dim, times: spectralClusterSequential(v, dim, times, rownorm=False)
@@ -286,13 +312,11 @@ def get_structure_features(chroma, mfcc, tempogram, hop_length, y, sr):
     interval = 0.25
     L = np.asarray(mir_eval.hierarchy._meet(specintervals_hier, speclabels_hier, interval).todense())
     times = interval*np.arange(L.shape[0])
-
-    embedding = MDS(n_components=2, dissimilarity='precomputed')
-    L = np.max(L) - L
-    Y = embedding.fit_transform(L)
-    plt.subplot(121)
-    plt.imshow(L, cmap = 'gray_r', extent=(times[0], times[-1], times[-1], times[0]), interpolation='nearest')
-    
-    plt.subplot(122)
-    plt.scatter(Y[:, 0], Y[:, 1], c=np.arange(Y.shape[0]))
-    plt.show()
+    U, s, _ = linalg.svd(L)
+    s = s[0:ndim]
+    X = U[:, 0:ndim]*s[None, :]
+    # Interpolate to final times
+    Y = np.zeros((final_times.size, ndim))
+    for i in range(ndim):
+        Y[:, i] = np.interp(final_times, times, X[:, i])
+    return Y

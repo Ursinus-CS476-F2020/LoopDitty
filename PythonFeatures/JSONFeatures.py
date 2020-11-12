@@ -2,15 +2,14 @@
 #Purpose: To extract features for use with LoopDitty
 import numpy as np
 import os
-import skimage
-import skimage.io
 import matplotlib.pyplot as plt
 import json
 import base64
 import time
 import librosa
 from sklearn.decomposition import PCA
-from SimilarityFusion import *
+import argparse
+from SimilarityFusion import get_structure_features
 
 
 # Dimensions to which to reduce the tempogram
@@ -29,24 +28,6 @@ def get_base64_file(filename):
     b = base64.b64encode(b)
     fin.close()
     return b.decode("ASCII")
-
-def get_base64_png_image(pD, cmapstr, logfloor_quantile = 0):
-    """
-    Get an image as a base64 string
-    """
-    D = np.array(pD)
-    if logfloor_quantile > 0:
-        floor = np.quantile(pD.flatten(), logfloor_quantile)
-        D = np.log(D + floor)
-    c = plt.get_cmap(cmapstr)
-    D = D-np.min(D)
-    D = np.round(255.0*D/np.max(D))
-    C = c(np.array(D, dtype=np.int32))
-    C = np.array(np.round(C*255), dtype=np.uint8)
-    skimage.io.imsave("temp.png", C)
-    b = get_base64_file("temp.png")
-    os.remove("temp.png")
-    return "data:image/png;base64, " + b
 
 #http://stackoverflow.com/questions/1447287/format-floats-with-standard-json-module
 class PrettyFloat(float):
@@ -114,7 +95,9 @@ def extract_features_json(filename, jsonfilename, song_name = "test song", sr=44
     x5 = librosa.feature.zero_crossing_rate(y, hop_length=hop_length)
     spectral = np.concatenate((x1, x2, x3, x4, x5), axis=0)
     # 5) Structure features
-    get_structure_features(chroma, mfcc, tempogram, hop_length, y, sr)
+    times = np.arange(mfcc.shape[1])*hop_length/sr
+    Results['times'] = times.tolist()
+    structure = get_structure_features(chroma, mfcc, tempogram, hop_length, y, sr, times)
 
     chroma = chroma.T
     mfcc = mfcc.T
@@ -124,10 +107,8 @@ def extract_features_json(filename, jsonfilename, song_name = "test song", sr=44
     print("Tempogram variance explained: %.3g"%np.sum(pca.explained_variance_ratio_))
     spectral = spectral.T
 
-    features = {'chroma':chroma.tolist(), 'mfcc':mfcc.tolist(), 'tempogram':tempogram.tolist(), 'spectral':spectral.tolist()}
+    features = {'chroma':chroma.tolist(), 'mfcc':mfcc.tolist(), 'tempogram':tempogram.tolist(), 'spectral':spectral.tolist(), 'structure':structure.tolist()}
     Results['features'] = features
-    times = np.arange(mfcc.shape[0])*hop_length/sr
-    Results['times'] = times.tolist()
 
 
     c = plt.get_cmap('Spectral')
