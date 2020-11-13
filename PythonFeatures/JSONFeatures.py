@@ -121,4 +121,12 @@ def extract_features_json(filename, jsonfilename, song_name = "test song", sr=44
     fout.close()
 
 if __name__ == '__main__':
-    extract_features_json("MJ.mp3", "MJ.json")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--filename', type=str, required=True, help="Path to audio file")
+    parser.add_argument('--outname', type=str, required=True, help="Path to audio file")
+    parser.add_argument('--song_name', type=str, help="Name to display for the song")
+    parser.add_argument('--sr', type=int, default=44100, help='Sample rate to use')
+    parser.add_argument('--hop_length', type=int, default=512, help='Hop length between features')
+    parser.add_argument('--mfcc_win', type=int, default=22050, help='Length of MFCC window')
+    opt = parser.parse_args()
+    extract_features_json(opt.filename, opt.outname, opt.song_name, opt.hop_length, opt.mfcc_win)

@@ -279,7 +279,7 @@ def get_structure_features(chroma, mfcc, tempogram, hop_length, y, sr, final_tim
     tempogram = tempogram[:, :n_frames]
     
 
-    ## Step 5: Do a delay embedding and compute SSMs
+    ## Step 2: Do a delay embedding and compute SSMs
     XChroma = librosa.feature.stack_memory(chroma, n_steps=wins_per_block, mode='edge').T
     DChroma = getCSMCosine(XChroma, XChroma) #Cosine distance
     XMFCC = librosa.feature.stack_memory(mfcc, n_steps=wins_per_block, mode='edge').T
@@ -287,7 +287,7 @@ def get_structure_features(chroma, mfcc, tempogram, hop_length, y, sr, final_tim
     XTempogram = librosa.feature.stack_memory(tempogram, n_steps=wins_per_block, mode='edge').T
     DTempogram = getCSM(XTempogram, XTempogram)
 
-    ## Step 5: Run similarity network fusion
+    ## Step 3: Run similarity network fusion
     FeatureNames = ['MFCCs', 'Chromas']
     Ds = [DMFCC, DChroma, DTempogram]
     # Edge case: If it's too small, zeropad SSMs
@@ -304,7 +304,8 @@ def get_structure_features(chroma, mfcc, tempogram, hop_length, y, sr, final_tim
         do_animation=False, PlotNames=FeatureNames, \
         PlotExtents=[times[0], times[-1]]) 
 
-    ## Step 6: Perform spectral clustering
+    ## Step 4: Perform spectral clustering and a dimension
+    # reduction via an SVD on the meet matrix
     vs = lapfn(WFused)
     labels = [specfn(vs, k, times) for k in range(2, neigs+1)]
     specintervals_hier = [res['intervals_hier'] for res in labels]
