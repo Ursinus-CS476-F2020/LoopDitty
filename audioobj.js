@@ -1,5 +1,3 @@
-
-
 /**
  * A class for storing an audio buffer and audio features
  */

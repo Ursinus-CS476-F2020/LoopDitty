@@ -129,4 +129,4 @@ if __name__ == '__main__':
     parser.add_argument('--hop_length', type=int, default=512, help='Hop length between features')
     parser.add_argument('--mfcc_win', type=int, default=22050, help='Length of MFCC window')
     opt = parser.parse_args()
-    extract_features_json(opt.filename, opt.outname, opt.song_name, opt.hop_length, opt.mfcc_win)
+    extract_features_json(opt.filename, opt.outname, opt.sr, opt.song_name, opt.hop_length, opt.mfcc_win)
